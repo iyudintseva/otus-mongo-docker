@@ -1,0 +1,76 @@
+-- Запустить mongodb на docker. 
+-- К сожалению на последней версии команда mongo не работает,
+-- поэтому взяла старую версию
+    
+docker run -it -v mongodata:/data/db --name mongodb -d mongo:4.2.3
+
+-- посмотреть логи
+docker logs mongodb
+
+-- подключиться к mongо на docker
+docker exec -it mongodb bash
+mongo -host localhost -port 27017
+
+-- импортировать данные
+exit
+docker cp ./mongodata/products.json mongodb:/data/db
+docker cp ./mongodata/stud.json mongodb:/data/db
+docker exec -it mongodb bash
+cd data/db
+mongoimport --db otusdb --collection products --file products.json
+mongoimport --db otusdb --collection students --file stud.json
+
+mongo otusdb
+use otusdb
+-- проверка наличия данных
+db.products.count()
+db.students.count()
+
+-- find
+-- поиск по массиву
+db.students.find( { "scores": { $elemMatch: { "type": "exam", "score": { $gt: 90}  } } })
+-- поиск первого элемента
+db.products.findOne()
+-- поиск по шаблону с выводом нужного поля в запросе
+db.products.find({'name' : {$regex: 'phone*', $options: 'i'}}, {name:1})
+-- поиск с использованием or
+db.students.find( { $or: [ { "name": "Corliss Zuk"}, { "name": "Jenette Flanders"} ] }, {name:1} );
+
+-- поиск с сортировкой
+-- факт: 
+-- оказалось что sort выполняется перед выполнением команд limit и skip, даже если написано в конце
+db.students.find({}, {name:1}).sort( { "name" : -1 } );
+db.students.find({}, {name:1}).skip(2).limit(2);
+db.students.find({}, {name:1}).skip(2).limit(2).sort( { "name" : -1 } );
+ 
+-- insert
+db.products.insert([
+{
+        "name" : "Phone TEST",
+        "type" : "warranty",
+        "price" : 40,
+        "rating" : 5,
+        "warranty_years" : 2,
+        "for" : ["ac3","ac7","ac9","qp7","qp8","qp9"]
+}
+])
+db.students.find( { "name": "Phone TEST"})
+
+-- delete
+db.products.count({'name' : {$regex: 'phone*', $options: 'i'}})
+db.products.deleteOne({'name' : {$regex: 'phone*', $options: 'i'}})
+db.products.count({'name' : {$regex: 'phone*', $options: 'i'}})
+db.products.deleteMany({'name' : {$regex: 'phone*', $options: 'i'}})
+db.products.count({'name' : {$regex: 'phone*', $options: 'i'}})
+
+-- update
+db.products.find("_id" : ObjectId("507d95d5719dbef170f15bf9"))
+db.products.update(
+  {"_id" : ObjectId("507d95d5719dbef170f15bf9")},
+  { $set : { "name" : "AC3 Series Charger TEST",
+        	 "type" : [ "accessory", "charger", "TEST"]}}
+)
+db.products.find("_id" : ObjectId("507d95d5719dbef170f15bf9"))
+
+
+
